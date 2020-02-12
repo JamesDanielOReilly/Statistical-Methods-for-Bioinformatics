@@ -6,3 +6,4 @@ kalama = read.table("kalama.txt", header=T)
 
 descrip.kalama <- stat.desc(kalama[,c("age", "height")], basic = TRUE, desc = TRUE)
 
+  
