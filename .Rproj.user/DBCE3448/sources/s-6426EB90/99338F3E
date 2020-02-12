@@ -1,0 +1,33 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1581515033901.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "99338F3E",
+    "lastKnownWriteTime" : 71501241154470928,
+    "last_content_update" : 1581515033901,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "D362EFD0",
+        "caption" : "kalama",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=kalama&cache_key=D362EFD0",
+        "displayedObservations" : "12",
+        "environment" : "",
+        "expression" : "kalama",
+        "object" : "kalama",
+        "preview" : "0",
+        "totalObservations" : "12",
+        "variables" : "2"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}

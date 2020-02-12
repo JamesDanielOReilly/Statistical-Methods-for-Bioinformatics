@@ -1,0 +1,7 @@
+## Installing necessary packages
+library(pastecs)
+## Reading the data
+kalama = read.table("kalama.txt", header=T)
+
+descrip.kalama <- stat.desc(kalama[,c("age", "height")], basic = TRUE, desc = TRUE)
+
