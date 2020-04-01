@@ -1,3 +1,0 @@
-"0","library(ISLR)"
-"0","Auto=read.table(""Auto.data.txt"", header=T, na.strings=""?"")"
-"0","fix(Auto)"
