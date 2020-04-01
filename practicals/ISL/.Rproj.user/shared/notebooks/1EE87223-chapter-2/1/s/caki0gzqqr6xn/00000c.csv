@@ -1,0 +1,2 @@
+"0","fa = (f -t(f))/2"
+"0","contour(x, y, fa, nlevels=45)"

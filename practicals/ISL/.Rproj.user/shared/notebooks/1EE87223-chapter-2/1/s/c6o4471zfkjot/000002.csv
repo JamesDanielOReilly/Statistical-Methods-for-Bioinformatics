@@ -1,0 +1,96 @@
+"0","install.packages(""ISLR"")"
+"2","Installing package into ‘/home/james/R/x86_64-pc-linux-gnu-library/3.6’
+(as ‘lib’ is unspecified)
+"
+"2","trying URL 'https://cloud.r-project.org/src/contrib/ISLR_1.2.tar.gz'
+"
+"2","Content type 'application/x-gzip'"
+"2"," length 1757568 bytes (1.7 MB)
+"
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","="
+"2","
+"
+"2","downloaded 1.7 MB
+
+"
+"2","* installing *source* package ‘ISLR’ ...
+"
+"2","** package ‘ISLR’ successfully unpacked and MD5 sums checked
+"
+"2","** using staged installation
+"
+"2","** data
+"
+"2","*** moving datasets to lazyload DB
+"
+"2","** help
+"
+"2","*** installing help indices
+"
+"2","** building package indices
+"
+"2","** testing if installed package can be loaded from temporary location
+"
+"2","** testing if installed package can be loaded from final location
+"
+"2","** testing if installed package keeps a record of temporary installation path
+"
+"2","* DONE (ISLR)
+"
+"2","
+"
+"2",""
+"2","The downloaded source packages are in
+	‘/tmp/RtmpOhjoh9/downloaded_packages’"
+"2",""
+"2","
+"
