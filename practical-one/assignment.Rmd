@@ -3,7 +3,114 @@ title: "Lasso-Assignment"
 output: html_notebook
 ---
 
+Loading necessary packages.
 ```{r}
+library(tidyverse)
+library(caret)
+library(glmnet)
+library(ggplot2)
+library(HDtweedie)
+library(RPEGLMEN)
+library(bestNormalize)
+```
 
+Summary of the data and looking at interesting interactions.
+```{r}
+class(prostate)
+str(prostate)
+summary(prostate)
+apply(prostate, 2, sd)
+plot(prostate)
+
+plot(prostate$lcavol, prostate$Cscore, main="Regression lcavol vs Cscore", xlab="lcavol", ylab="Cscore")
+abline(lm(prostate$Cscore~prostate$lcavol), data=prostate, col='red')
+
+plot(prostate$lpsa, prostate$Cscore, main="Regression lpsa vs Cscore", xlab="lpsa", ylab="Csore")
+abline(lm(prostate$Cscore~prostate$lpsa), data=prostate, col='red')
+```
+
+Preparing data for model.
+```{r}
+prostate$svi <- as.factor(prostate$svi)         # Setting svi to categorical variable
+
+x=model.matrix(Cscore~., prostate)[,-1]         # Formatting data for glmnet
+y=prostate$Cscore
+```
+
+
+
+```{r}
+hist(y, prob=TRUE, main='Density plot for Cscore', breaks=50, col='grey', xlim=c(-50,250), ylim = c(0, 0.025), xlab='Cscore')
+lines(density(y, adjust=0.8), col="blue", lwd=2)
+```
+
+```{r}
+set.seed(1)                                     # Splitting into training and test data
+train=sample(1:nrow(x), nrow(x)/2)
+test=(-train)
+y.test=y[test]
+```
+
+```{r}
+grid=10^seq(10, -2, length=100)
+lasso.mod=glmnet(x[train,], y[train], alpha=1, lambda=grid)
+plot(lasso.mod)
+```
+
+Using cross-validation to find the best lambda and then
+```{r}
+set.seed(1)
+cv.out=cv.glmnet(x[train,], y[train], alpha=1, family='gaussian')
+plot(cv.out)
+bestlam =cv.out$lambda.min
+lasso.pred=predict(lasso.mod, s=bestlam, newx=x[test,])
+mean((lasso.pred-y.test)^2)
+```
+
+```{r}
+out=glmnet(x, y, alpha=1, lambda=grid)
+lasso.coef=predict(out, type="coefficients", s=bestlam) [1:8,]
+lasso.coef
+```
+LAsso regression for a normalised response variable.
+```{r}
+prostate1 <- prostate
+prostate1$svi <- as.factor(prostate1$svi)
+
+x1 <- model.matrix(Cscore~., prostate1)[,-1]
+y1 <- prostate1$Cscore
+
+BNobject <- bestNormalize(y1)
+
+hist(BNobject$x.t, prob=TRUE, main='Density plot for Cscore', breaks=50, col='grey', xlim=c(-5,5), xlab='Cscore')
+lines(density(BNobject$x.t, adjust=2), col="blue", lwd=2)
+```
+
+```{r}
+grid=10^seq(10, -2, length=100)
+lasso.mod=glmnet(x1[train1,], BNobject$x.t[train1], alpha=1, lambda=grid, family='gaussian')
+plot(lasso.mod)
+```
+
+```{r}
+set.seed(1)                                     # Splitting into training and test data
+train1=sample(1:nrow(x1), nrow(x1)/2)
+test1=(-train1)
+y1.test=y1[test1]
+```
+
+```{r}
+set.seed(1)
+cv.out=cv.glmnet(x1[train1,], BNobject$x.t[train1], alpha=1, family='gaussian')
+plot(cv.out)
+bestlam =cv.out$lambda.min
+lasso.pred.transformed = predict(lasso.mod, s=bestlam, newx=x1[test1,])
+lasso.pred = predict(BNobject, newdata=lasso.pred.transformed, inverse=TRUE)
+mean((lasso.pred-y1.test)^2)
+```
+```{r}
+out=glmnet(x, BNobject$x.t, alpha=1, lambda=grid, family='gaussian')
+lasso.coef=predict(out, type="coefficients", s=bestlam) [1:8,]
+lasso.coef
 ```
 
