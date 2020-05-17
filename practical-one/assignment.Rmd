@@ -132,3 +132,18 @@ lasso.coef=predict(out, type="coefficients", s=bestlam) [1:8,]
 lasso.coef
 ```
 
+
+
+
+Fitting a model with appropriate non-linear effects.
+
+First exploring fitting some variables with polynomials
+```{r}
+fit <- lm(prostate$Cscore~poly(prostate$lpsa, 4), data=prostate)
+summary(fit)
+plot(prostate$lpsa, prostate$Cscore)
+lines(smooth.spline(prostate$lpsa, predict(fit)), col='blue', lwd=2)
+
+#abline(fit, lwd=2, col='red')
+```
+
