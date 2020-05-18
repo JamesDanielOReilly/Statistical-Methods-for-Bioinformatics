@@ -11,11 +11,14 @@ library(glmnet)
 library(ggplot2)
 library(bestNormalize)
 library(RColorBrewer)
+library(splines)
+library(gam)
 ```
 
-Loading in the data.
+Loading in and attaching the data.
 ```{r}
 load("prostate2.Rdata")
+attach(prostate)
 ```
 
 Summary of the data and looking at interesting interactions.
@@ -26,19 +29,31 @@ summary(prostate)
 apply(prostate, 2, sd)
 plot(prostate)
 
-plot(prostate$lcavol, prostate$Cscore, main="Regression lcavol vs Cscore", xlab="lcavol", ylab="Cscore")
-abline(lm(prostate$Cscore~prostate$lcavol), data=prostate, col='red')
+plot(lcavol, Cscore, main="Regression lcavol vs Cscore", xlab="lcavol", ylab="Cscore")
+abline(lm(Cscore~lcavol), data=prostate, col='red')
 
-plot(prostate$lpsa, prostate$Cscore, main="Regression lpsa vs Cscore", xlab="lpsa", ylab="Csore")
-abline(lm(prostate$Cscore~prostate$lpsa), data=prostate, col='red')
+plot(lpsa, Cscore, main="Regression lpsa vs Cscore", xlab="lpsa", ylab="Csore")
+abline(lm(Cscore~lpsa), data=prostate, col='red')
+
+plot(lweight, Cscore, main="Regression lweight vs Cscore", xlab="lweight", ylab="Csore")
+abline(lm(Cscore~lweight), data=prostate, col='red')
+
+plot(lbph, Cscore, main="Regression lbph vs Cscore", xlab="lbph", ylab="Csore")
+abline(lm(Cscore~lbph), data=prostate, col='red')
+
+plot(age, Cscore, main="Regression age vs Cscore", xlab="age", ylab="Csore")
+abline(lm(Cscore~age), data=prostate, col='red')
+
+plot(lcp, Cscore, main="Regression lcp vs Cscore", xlab="lcp", ylab="Csore")
+abline(lm(Cscore~lcp), data=prostate, col='red')
 ```
 
 Preparing data for model.
 ```{r}
-prostate$svi <- as.factor(prostate$svi)         # Setting svi to categorical variable
+svi = as.factor(svi)         # Setting svi to categorical variable
 
 x=model.matrix(Cscore~., prostate)[,-1]         # Formatting data for glmnet
-y=prostate$Cscore
+y=Cscore
 ```
 
 
@@ -110,13 +125,6 @@ legend("bottomright", lwd = 1, col = brewer.pal(n = 7, name = "Dark2"), legend =
 ```
 
 ```{r}
-set.seed(1)                                     # Splitting into training and test data
-train1=sample(1:nrow(x1), nrow(x1)/2)
-test1=(-train1)
-y1.test=y1[test1]
-```
-
-```{r}
 set.seed(1)
 cv.out=cv.glmnet(x1[train1,], BNobject$x.t[train1], alpha=1, family='gaussian')
 plot(cv.out)
@@ -131,19 +139,63 @@ out=glmnet(x, BNobject$x.t, alpha=1, lambda=grid, family='gaussian')
 lasso.coef=predict(out, type="coefficients", s=bestlam) [1:8,]
 lasso.coef
 ```
-
-
-
-
+  
 Fitting a model with appropriate non-linear effects.
 
-First exploring fitting some variables with polynomials
 ```{r}
-fit <- lm(prostate$Cscore~poly(prostate$lpsa, 4), data=prostate)
-summary(fit)
-plot(prostate$lpsa, prostate$Cscore)
-lines(smooth.spline(prostate$lpsa, predict(fit)), col='blue', lwd=2)
+lcavol.lims = range(lcavol)
+plot(lcavol, Cscore, xlim=lcavol.lims, cex =.5, col="darkgrey")
+title("Smoothing Spline for LCAVOL")
+lcavol.fit = smooth.spline(lcavol, Cscore, cv=TRUE)
+lcavol.df = lcavol.fit$df
+lcavol.lambda = lcavol.fit$lambda
+lines(lcavol.fit, col="purple", lwd=2)
+legend("topright", legend="3.84 DF", col="purple", lty=1, lwd=2, cex=.8)
 
-#abline(fit, lwd=2, col='red')
+lpsa.lims = range(lpsa)
+plot(lpsa, Cscore, xlim=lpsa.lims, cex =.5, col="darkgrey")
+title("Smoothing Spline for LPSA")
+lpsa.fit = smooth.spline(lpsa, Cscore, cv=TRUE)
+lpsa.df = lpsa.fit$df
+lpsa.lambda = lpsa.fit$lambda
+lines(lpsa.fit, col="purple", lwd=2)
+legend("topright", legend="4 DF", col="purple", lty=1, lwd=2, cex=.8)
 ```
 
+```{r}
+set.seed(1)                                     # Splitting into training and test data
+smp_size = floor(0.8 * nrow(prostate))
+train_ind = sample(seq_len(nrow(prostate)), size = smp_size)
+
+gamtrain = prostate[train_ind, ]
+gamtest = prostate[-train_ind, ]
+```
+
+Fitting and testing GAMs using the smoothing splines.
+```{r}
+gam1 = gam(Cscore~s(lpsa, lpsa.df) + s(lcavol, lcavol.df) + svi + lweight + lcp, data=gamtrain)
+gam1.predict = predict(gam1, newdata=gamtest)
+gam1.MSE = mean((gam1.predict - gamtest$Cscore)^2)
+
+gam2 = gam(Cscore~s(lpsa, lpsa.df) + s(lcavol, lcavol.df) + svi + age + lweight + lcp, data=gamtrain)
+gam2.predict = predict(gam2, newdata=gamtest)
+gam2.MSE = mean((gam2.predict - gamtest$Cscore)^2)
+
+gam3 = gam(Cscore~s(lpsa, lpsa.df) + s(lcavol, lcavol.df) + svi + lbph + lweight + lcp, data=gamtrain)
+gam3.predict = predict(gam3, newdata=gamtest)
+gam3.MSE = mean((gam3.predict - gamtest$Cscore)^2)
+
+gam4 = gam(Cscore~s(lpsa, lpsa.df) + s(lcavol, lcavol.df) + svi + age + lbph + lweight + lcp, data=gamtrain)
+gam4.predict = predict(gam4, newdata=gamtest)
+gam4.MSE = mean((gam4.predict - gamtest$Cscore)^2)
+
+gam1.MSE
+gam2.MSE
+gam3.MSE
+gam4.MSE
+```
+
+Anova for the different models.
+```{r}
+anova(gam1, gam2, gam3, gam4, test="F")
+```
