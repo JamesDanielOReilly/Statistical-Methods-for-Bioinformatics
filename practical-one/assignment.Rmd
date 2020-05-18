@@ -1,6 +1,8 @@
 ---
 title: "Lasso-Assignment"
 output: html_notebook
+editor_options: 
+  chunk_output_type: inline
 ---
 
 Loading necessary packages.
@@ -28,23 +30,26 @@ str(prostate)
 summary(prostate)
 apply(prostate, 2, sd)
 plot(prostate)
+```
 
-plot(lcavol, Cscore, main="Regression lcavol vs Cscore", xlab="lcavol", ylab="Cscore")
+
+```{r}
+plot(lcavol, Cscore, main="Regression lcavol vs Cscore", xlab="lcavol", ylab="Cscore", cex.main=1.4, cex.lab=1.3, cex.axis=1.1)
 abline(lm(Cscore~lcavol), data=prostate, col='red')
 
-plot(lpsa, Cscore, main="Regression lpsa vs Cscore", xlab="lpsa", ylab="Csore")
+plot(lpsa, Cscore, main="Regression lpsa vs Cscore", xlab="lpsa", ylab="Csore", cex.main=1.4, cex.lab=1.3, cex.axis=1.1)
 abline(lm(Cscore~lpsa), data=prostate, col='red')
 
-plot(lweight, Cscore, main="Regression lweight vs Cscore", xlab="lweight", ylab="Csore")
+plot(lweight, Cscore, main="Regression lweight vs Cscore", xlab="lweight", ylab="Csore", cex.main=1.4, cex.lab=1.3, cex.axis=1.1)
 abline(lm(Cscore~lweight), data=prostate, col='red')
 
-plot(lbph, Cscore, main="Regression lbph vs Cscore", xlab="lbph", ylab="Csore")
+plot(lbph, Cscore, main="Regression lbph vs Cscore", xlab="lbph", ylab="Csore", cex.main=1.4, cex.lab=1.3, cex.axis=1.1)
 abline(lm(Cscore~lbph), data=prostate, col='red')
 
-plot(age, Cscore, main="Regression age vs Cscore", xlab="age", ylab="Csore")
+plot(age, Cscore, main="Regression age vs Cscore", xlab="age", ylab="Csore", cex.main=1.4, cex.lab=1.3, cex.axis=1.1)
 abline(lm(Cscore~age), data=prostate, col='red')
 
-plot(lcp, Cscore, main="Regression lcp vs Cscore", xlab="lcp", ylab="Csore")
+plot(lcp, Cscore, main="Regression lcp vs Cscore", xlab="lcp", ylab="Csore", cex.main=1.4, cex.lab=1.3, cex.axis=1.1)
 abline(lm(Cscore~lcp), data=prostate, col='red')
 ```
 
@@ -59,7 +64,7 @@ y=Cscore
 
 
 ```{r}
-hist(y, prob=TRUE, main='Density plot for Cscore', breaks=50, col='grey', xlim=c(-50,250), ylim = c(0, 0.025), xlab='Cscore')
+hist(y, prob=TRUE, main='Density plot for Cscore', breaks=50, col='grey', xlim=c(-50,250), ylim = c(0, 0.025), xlab='Cscore', cex.main=1.4, cex.lab=1.3, cex.axis=1.1)
 lines(density(y, adjust=0.8), col="blue", lwd=2)
 ```
 
@@ -73,16 +78,23 @@ y.test=y[test]
 ```{r}
 grid=10^seq(10, -2, length=100)
 lasso.mod=glmnet(x[train,], y[train], alpha=1, lambda=grid)
+x0=c(0.6, 0.6, 1.1, 1.1)
+y0=c(-8.3,-6.8,-2.7,-3.7)
 
-plot(lasso.mod, xvar="lambda", col = brewer.pal(n = 7, name = "Dark2"))
-legend("bottomright", lwd = 1, col = brewer.pal(n = 7, name = "Dark2"), legend = colnames(x[train,]))
+plot(lasso.mod, xvar="lambda", lwd=2, col = brewer.pal(n = 7, name = "Dark2"), xlim=c(0.5,3.5), ylim=c(-12,15), cex.lab=1.3, cex.axis=1.1)
+abline(v=c(0.6,1.1), col=c("black", "black"), lty=c(2,2), lwd=c(1, 1))
+legend("bottomright", lwd = 2, col = brewer.pal(n = 7, name = "Dark2"), legend = colnames(x[train,]))
+
+plot(lasso.mod, xvar="lambda", lwd=2, col = brewer.pal(n = 7, name = "Dark2"), cex.lab=1.3, cex.axis=1.1)
+legend("topright", lwd = 2, col = brewer.pal(n = 7, name = "Dark2"), legend = colnames(x[train,]))
 ```
 
 Using cross-validation to find the best lambda and then
 ```{r}
 set.seed(1)
 cv.out=cv.glmnet(x[train,], y[train], alpha=1, family='gaussian')
-plot(cv.out)
+plot(cv.out, cex.lab=1.3, cex.axis=1.1)
+
 bestlam = cv.out$lambda.min
 bestlam
 lasso.pred=predict(lasso.mod, s=bestlam, newx=x[test,])
@@ -94,6 +106,7 @@ out=glmnet(x, y, alpha=1, lambda=grid)
 lasso.coef=predict(out, type="coefficients", s=bestlam) [1:8,]
 lasso.coef
 ```
+
 LASSO regression for a normalised response variable.
 ```{r}
 prostate1 <- prostate
@@ -104,7 +117,7 @@ y1 <- prostate1$Cscore
 
 BNobject <- bestNormalize(y1)
 
-hist(BNobject$x.t, prob=TRUE, main='Density plot for Cscore', breaks=50, col='grey', xlim=c(-4,4), ylim=c(0,0.5), xlab='Cscore')
+hist(BNobject$x.t, prob=TRUE, main='Density plot for normalised Cscore', breaks=50, col='grey', xlim=c(-4,4), ylim=c(0,0.5), xlab='Cscore', cex.lab=1.3, cex.axis=1.1, cex.main=1.2)
 lines(density(BNobject$x.t, adjust=2), col="blue", lwd=2)
 ```
 
@@ -144,22 +157,20 @@ Fitting a model with appropriate non-linear effects.
 
 ```{r}
 lcavol.lims = range(lcavol)
-plot(lcavol, Cscore, xlim=lcavol.lims, cex =.5, col="darkgrey")
+plot(lcavol, Cscore, xlim=lcavol.lims, cex =.5, col="darkgrey", cex.lab=1.3, cex.axis=1.1)
 title("Smoothing Spline for LCAVOL")
 lcavol.fit = smooth.spline(lcavol, Cscore, cv=TRUE)
 lcavol.df = lcavol.fit$df
 lcavol.lambda = lcavol.fit$lambda
 lines(lcavol.fit, col="purple", lwd=2)
-legend("topright", legend="3.84 DF", col="purple", lty=1, lwd=2, cex=.8)
 
 lpsa.lims = range(lpsa)
-plot(lpsa, Cscore, xlim=lpsa.lims, cex =.5, col="darkgrey")
+plot(lpsa, Cscore, xlim=lpsa.lims, cex =.5, col="darkgrey", cex.lab=1.3, cex.axis=1.1)
 title("Smoothing Spline for LPSA")
 lpsa.fit = smooth.spline(lpsa, Cscore, cv=TRUE)
 lpsa.df = lpsa.fit$df
 lpsa.lambda = lpsa.fit$lambda
 lines(lpsa.fit, col="purple", lwd=2)
-legend("topright", legend="4 DF", col="purple", lty=1, lwd=2, cex=.8)
 ```
 
 ```{r}
