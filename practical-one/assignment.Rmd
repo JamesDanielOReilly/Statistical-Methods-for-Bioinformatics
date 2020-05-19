@@ -50,7 +50,7 @@ ggpairs(prostate, aes(alpha = 0.3))
 
 
 ```{r}
-p = ggplot(prostate, aes(x=lpsa, y=Cscore)) + 
+ggplot(prostate, aes(x=lpsa, y=Cscore)) + 
     geom_point(
         color="black",
         fill="#69b3a2",
@@ -65,9 +65,9 @@ p = ggplot(prostate, aes(x=lpsa, y=Cscore)) +
        axis.title.x = element_text(size=20, vjust=0.5, hjust=0.5),
        axis.title.y = element_text(size=20, vjust=0.5, hjust=0.5),
        plot.margin=grid::unit(c(1,1,1,1), "mm"))
-ggsave(p, file="lpsa-cscore.pdf", width=8, height=6, device = cairo_pdf)
+#ggsave(p, file="lpsa-cscore.pdf", width=8, height=6, device = cairo_pdf)
 
-p = ggplot(prostate, aes(x=lcavol, y=Cscore)) + 
+ggplot(prostate, aes(x=lcavol, y=Cscore)) + 
     geom_point(
         color="black",
         fill="#69b3a2",
@@ -82,7 +82,7 @@ p = ggplot(prostate, aes(x=lcavol, y=Cscore)) +
        axis.title.x = element_text(size=20, vjust=0.5, hjust=0.5),
        axis.title.y = element_text(size=20, vjust=0.5, hjust=0.5),
        plot.margin=grid::unit(c(1,1,1,1), "mm"))
-ggsave(p, file="lcavol-cscore.pdf", width=8, height=6, device = cairo_pdf)
+#ggsave(p, file="lcavol-cscore.pdf", width=8, height=6, device = cairo_pdf)
 ```
 
 Preparing data for model.
@@ -94,7 +94,7 @@ y=Cscore
 ```
 
 ```{r}
-p = ggplot(prostate, aes(x=Cscore)) + 
+ggplot(prostate, aes(x=Cscore)) + 
     geom_histogram(aes(y=..density..), bins=50, fill="#006dfc", color="#e9ecef", alpha=0.9)+
     geom_density(size=1, alpha=.3, color="#1c1b1b", fill="#006dfc")+
     xlim(-100,400)+
@@ -106,7 +106,7 @@ p = ggplot(prostate, aes(x=Cscore)) +
           axis.title.y = element_text(size=20, vjust=0.5, hjust=0.5, family="CM Roman"),
           plot.margin=grid::unit(c(1,1,1,1), "mm"))
 
-ggsave(p, file="response-nonnormal.pdf", width=8, height=6, device = cairo_pdf)
+#ggsave(p, file="response-nonnormal.pdf", width=8, height=6, device = cairo_pdf)
 embed_fonts("response-nonnormal.pdf", outfile="response-nonnormal-embedded.pdf")
 ```
 
@@ -124,25 +124,19 @@ lasso.mod=glmnet(x[train,], y[train], alpha=1, lambda=grid)
 x0=c(0.6, 0.6, 1.1, 1.1)
 y0=c(-8.3,-6.8,-2.7,-3.7)
 
-pdf(file="/home/james/Documents/KU-Leuven/first-year/Statistical-Methods-for-Bioinformatics/practical-one/coefficients-zoomed.pdf", width=9, height=6)
 plot(lasso.mod, xvar="lambda", lwd=2, col = brewer.pal(n = 7, name = "Dark2"), xlim=c(0.5,3.5), ylim=c(-15,15), cex.lab=1.3)
 abline(v=c(0.6,1.1), col=c("black", "black"), lty=c(2,2), lwd=c(1, 1))
 legend("bottomright", lwd = 2, col = brewer.pal(n = 7, name = "Dark2"), legend = colnames(x[train,]))
-dev.off()
 
-pdf(file="/home/james/Documents/KU-Leuven/first-year/Statistical-Methods-for-Bioinformatics/practical-one/coefficients.pdf", width=9, height=7)
 plot(lasso.mod, xvar="lambda", lwd=2, col = brewer.pal(n = 7, name = "Dark2"), xlim=c(-5,20), ylim=c(-20,50), cex.lab=1.3)
 legend("topright", lwd = 2, col = brewer.pal(n = 7, name = "Dark2"), legend = colnames(x[train,]))
-dev.off()
 ```
 
 Using cross-validation to find the best lambda and then
 ```{r}
 set.seed(1)
 cv.out=cv.glmnet(x[train,], y[train], alpha=1, family='gaussian')
-pdf(file="/home/james/Documents/KU-Leuven/first-year/Statistical-Methods-for-Bioinformatics/practical-one/MSE.pdf", width=9, height=6)
 plot(cv.out, xlim=c(-2,4), ylim=c(1000,7000), cex.lab=1.3)
-dev.off()
 
 bestlam = cv.out$lambda.min
 bestlam
@@ -169,7 +163,7 @@ normalised.df = data.frame(BNobject$x.t)
 ```
 
 ```{r}
-p = ggplot(normalised.df, aes(x=BNobject.x.t)) + 
+ggplot(normalised.df, aes(x=BNobject.x.t)) + 
 geom_histogram(aes(y=..density..), bins=50, fill="#006dfc", color="#e9ecef", alpha=0.9)+
     geom_density(size=1, alpha=.3, color="#1c1b1b", fill="#006dfc")+
     xlim(-4,4)+
@@ -182,7 +176,7 @@ geom_histogram(aes(y=..density..), bins=50, fill="#006dfc", color="#e9ecef", alp
        axis.title.y = element_text(size=20, vjust=0.5, hjust=0.5),
           plot.margin=grid::unit(c(1,1,1,1), "mm"))
 
-ggsave(p, file="density-normalised.pdf", width=8, height=6, device = cairo_pdf)
+#ggsave(p, file="density-normalised.pdf", width=8, height=6, device = cairo_pdf)
 ```
 
 ```{r}
@@ -220,7 +214,7 @@ lasso.coef
 Fitting a model with appropriate non-linear effects.
 
 ```{r}
-p = ggplot(prostate, aes(x=lpsa, y=Cscore)) + 
+ggplot(prostate, aes(x=lpsa, y=Cscore)) + 
     geom_point(
         color="black",
         fill="#69b3a2",
@@ -235,9 +229,9 @@ p = ggplot(prostate, aes(x=lpsa, y=Cscore)) +
        axis.title.x = element_text(size=20, vjust=0.5, hjust=0.5),
        axis.title.y = element_text(size=20, vjust=0.5, hjust=0.5),
        plot.margin=grid::unit(c(1,1,1,1), "mm"))
-ggsave(p, file="lpsa-spline.pdf", width=8, height=6, device = cairo_pdf)
+#ggsave(p, file="lpsa-spline.pdf", width=8, height=6, device = cairo_pdf)
 
-p = ggplot(prostate, aes(x=lcavol, y=Cscore)) + 
+ggplot(prostate, aes(x=lcavol, y=Cscore)) + 
     geom_point(
         color="black",
         fill="#69b3a2",
@@ -252,7 +246,7 @@ p = ggplot(prostate, aes(x=lcavol, y=Cscore)) +
        axis.title.x = element_text(size=20, vjust=0.5, hjust=0.5),
        axis.title.y = element_text(size=20, vjust=0.5, hjust=0.5),
        plot.margin=grid::unit(c(1,1,1,1), "mm"))
-ggsave(p, file="lcavol-spline.pdf", width=8, height=6, device = cairo_pdf)
+#ggsave(p, file="lcavol-spline.pdf", width=8, height=6, device = cairo_pdf)
 ```
 
 ```{r}
