@@ -1,11 +1,14 @@
 ---
-title: "Exam Code"
-output: html_notebook
-editor_options: 
-chunk_output_type: inline
+title: "Resampling Methods"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+    number_sections: true
 ---
 # Installing packages
-```{r}
+```{r, results="hide"}
 install.packages('ISLR')
 install.packages('boot')
 ```

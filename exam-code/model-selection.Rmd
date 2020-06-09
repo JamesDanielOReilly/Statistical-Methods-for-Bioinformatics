@@ -1,11 +1,14 @@
 ---
 title: "Model Selection"
-output: html_notebook
-editor_options: 
-  chunk_output_type: inline
+output: 
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+    number_sections: true
 ---
 # Importing libraries
-```{r}
+```{r, results="hide"}
 install.packages('ISLR')
 install.packages('leaps')
 install.packages('glmnet')
@@ -14,7 +17,7 @@ install.packages('pls')
 
 # Subset Selection Methods
 ## Best subset selection
-```{r}
+```{r, results="hide"}
 library(ISLR)
 library(leaps)
 attach(Hitters)
@@ -181,7 +184,7 @@ predict(out, type="coefficients", s= bestlam)[1:20,]
 Principal components regression (PCR) can be performed using the pcr() function, which is part of the pls library.
 
 ```{r}
-library (pls)
+library(pls)
 set.seed(2)
 pcr.fit = pcr(Salary~., data=Hitters, scale=TRUE, validation="CV")
 ```
@@ -204,11 +207,50 @@ We now perform PCR on the training data and evaluate its test set performance.
 
 ```{r}
 set.seed(1)
-train = sample(1:nrow(x), nrow(x)/2)
-test = (-train)
-y.test = y[test]
 pcr.fit = pcr(Salary~., data=Hitters, subset=train, scale=TRUE, validation="CV")
 validationplot(pcr.fit, val.type="MSEP")
 ```
 
+Now we find that the lowest cross-validation error occurs when M = 5 components are used. We compute the test MSE as follows.
 
+```{r}
+pcr.pred = predict(pcr.fit, x[test,], ncomp=5)
+mean((pcr.pred-y.test)^2)
+```
+
+This test set MSE is competitive with the results obtained using ridge regression and the lasso. However, as a result of the way PCR is implemented, the final model is more difficult to interpret because it does not perform any kind of variable selection or even directly produce coefficient estimates.
+
+Finally, we fit PCR on the full data set, using M = 5, the number of components identified by cross-validation.
+
+```{r}
+pcr.fit = pcr(y~x, scale=TRUE, ncomp=5)
+summary(pcr.fit)
+```
+
+## Partial Least Squares
+We implement partial least squares (PLS) using the plsr() function, also in the pls library.
+
+```{r}
+set.seed(1)
+pls.fit = plsr(Salary~., data=Hitters, subset=train, scale=TRUE, validation="CV")
+summary(pls.fit)
+validationplot(pls.fit, val.type="MSEP")
+```
+
+The lowest cross-validation error occurs when only M = 1 partial least squares directions are used. We now evaluate the corresponding test set MSE.
+
+```{r}
+pls.pred=predict(pls.fit, x[test,], ncomp=1)
+mean((pls.pred-y.test)^2)
+```
+
+The test MSE is comparable to the test MSE obtained using ridge regression, the lasso, and PCR.
+
+Finally, we perform PLS using the full data set, using M = 1, the number of components identified by cross-validation.
+
+```{r}
+pls.fit = plsr(Salary~., data=Hitters, scale=TRUE, ncomp=1)
+summary (pls.fit)
+```
+
+Notice that the percentage of variance in Salary that the one-component PLS fit explains is almost as much as that explained using the final five-component model PCR fit. This is because PCR only attempts to maximize the amount of variance explained in the predictors, while PLS searches for directions that explain variance in both the predictors and the response.
