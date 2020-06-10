@@ -1,5 +1,0 @@
----
-author: "James O'Reilly"
-title: "R Notebook"
-output: html_notebook
----
