@@ -1,0 +1,289 @@
+---
+title: "Lasso-Assignment"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+Loading necessary packages.
+```{r}
+library(tidyverse)
+library(caret)
+library(glmnet)
+library(ggplot2)
+library(bestNormalize)
+library(RColorBrewer)
+library(splines)
+library(GGally)
+```
+
+
+```{r}
+library(gam)
+library(hrbrthemes)
+library(extrafont)
+font_install('fontcm')
+hrbrthemes::import_roboto_condensed()
+loadfonts()
+```
+
+Loading in and attaching the data.
+```{r}
+load("prostate2.Rdata")
+attach(prostate)
+```
+
+
+Summary of the data and looking at interesting interactions.
+```{r}
+class(prostate)
+str(prostate)
+summary(prostate)
+apply(prostate, 2, sd)
+
+ggplot2::theme_set(ggplot2::theme_bw())
+#pdf("scatterplot-matrix.pdf", height = 7, width = 9)
+ggpairs(prostate, aes(alpha = 0.3))
+#print(g)
+#dev.off()
+```
+
+
+```{r}
+ggplot(prostate, aes(x=lpsa, y=Cscore)) + 
+    geom_point(
+        color="black",
+        fill="#69b3a2",
+        alpha=0.5,
+        size=1.5,
+        stroke = 1
+        ) +
+    geom_smooth(method="lm", color="#006dfc", se=TRUE, fullrange=FALSE, level=0.95)+
+    #ggtitle("lpsa vs Cscore")+
+    theme_ipsum()+
+    theme(plot.title = element_text(size=26),
+       axis.title.x = element_text(size=20, vjust=0.5, hjust=0.5),
+       axis.title.y = element_text(size=20, vjust=0.5, hjust=0.5),
+       plot.margin=grid::unit(c(1,1,1,1), "mm"))
+#ggsave(p, file="lpsa-cscore.pdf", width=8, height=6, device = cairo_pdf)
+
+ggplot(prostate, aes(x=lcavol, y=Cscore)) + 
+    geom_point(
+        color="black",
+        fill="#69b3a2",
+        alpha=0.5,
+        size=1.5,
+        stroke = 1
+        ) +
+    geom_smooth(method="lm", color="#006dfc", se=TRUE, fullrange=FALSE, level=0.95)+
+    #ggtitle("lcavol vs Cscore")+
+    theme_ipsum()+
+    theme(plot.title = element_text(size=26),
+       axis.title.x = element_text(size=20, vjust=0.5, hjust=0.5),
+       axis.title.y = element_text(size=20, vjust=0.5, hjust=0.5),
+       plot.margin=grid::unit(c(1,1,1,1), "mm"))
+#ggsave(p, file="lcavol-cscore.pdf", width=8, height=6, device = cairo_pdf)
+```
+
+Preparing data for model.
+```{r}
+svi = as.factor(svi)         # Setting svi to categorical variable
+
+x=model.matrix(Cscore~., prostate)[,-1]         # Formatting data for glmnet
+y=Cscore
+```
+
+```{r}
+ggplot(prostate, aes(x=Cscore)) + 
+    geom_histogram(aes(y=..density..), bins=50, fill="#006dfc", color="#e9ecef", alpha=0.9)+
+    geom_density(size=1, alpha=.3, color="#1c1b1b", fill="#006dfc")+
+    xlim(-100,400)+
+    #ggtitle("Response Density")+
+    theme_ipsum()+
+    theme(text=element_text(family="CM Roman"),
+          plot.title = element_text(size=26),
+          axis.title.x = element_text(size=20, vjust=0.5, hjust=0.5, family="CM Roman"),
+          axis.title.y = element_text(size=20, vjust=0.5, hjust=0.5, family="CM Roman"),
+          plot.margin=grid::unit(c(1,1,1,1), "mm"))
+
+#ggsave(p, file="response-nonnormal.pdf", width=8, height=6, device = cairo_pdf)
+embed_fonts("response-nonnormal.pdf", outfile="response-nonnormal-embedded.pdf")
+```
+
+
+```{r}
+set.seed(1)   # Splitting into training and test data
+train=sample(1:nrow(x), nrow(x)/2)
+test=(-train)
+y.test=y[test]
+```
+
+```{r}
+grid=10^seq(10, -2, length=100)
+lasso.mod=glmnet(x[train,], y[train], alpha=1, lambda=grid)
+x0=c(0.6, 0.6, 1.1, 1.1)
+y0=c(-8.3,-6.8,-2.7,-3.7)
+
+plot(lasso.mod, xvar="lambda", lwd=2, col = brewer.pal(n = 7, name = "Dark2"), xlim=c(0.5,3.5), ylim=c(-15,15), cex.lab=1.3)
+abline(v=c(0.6,1.1), col=c("black", "black"), lty=c(2,2), lwd=c(1, 1))
+legend("bottomright", lwd = 2, col = brewer.pal(n = 7, name = "Dark2"), legend = colnames(x[train,]))
+
+plot(lasso.mod, xvar="lambda", lwd=2, col = brewer.pal(n = 7, name = "Dark2"), xlim=c(-5,20), ylim=c(-20,50), cex.lab=1.3)
+legend("topright", lwd = 2, col = brewer.pal(n = 7, name = "Dark2"), legend = colnames(x[train,]))
+```
+
+Using cross-validation to find the best lambda and then
+```{r}
+set.seed(1)
+cv.out=cv.glmnet(x[train,], y[train], alpha=1, family='gaussian')
+plot(cv.out, xlim=c(-2,4), ylim=c(1000,7000), cex.lab=1.3)
+
+bestlam = cv.out$lambda.min
+bestlam
+lasso.pred=predict(lasso.mod, s=bestlam, newx=x[test,])
+mean((lasso.pred-y.test)^2)
+```
+
+```{r}
+out=glmnet(x, y, alpha=1, lambda=grid)
+lasso.coef=predict(out, type="coefficients", s=bestlam) [1:8,]
+lasso.coef
+```
+
+LASSO regression for a normalised response variable.
+```{r}
+prostate1 <- prostate
+prostate1$svi <- as.factor(prostate1$svi)
+
+x1 <- model.matrix(Cscore~., prostate1)[,-1]
+y1 <- prostate1$Cscore
+
+BNobject <- bestNormalize(y1)
+normalised.df = data.frame(BNobject$x.t)
+```
+
+```{r}
+ggplot(normalised.df, aes(x=BNobject.x.t)) + 
+geom_histogram(aes(y=..density..), bins=50, fill="#006dfc", color="#e9ecef", alpha=0.9)+
+    geom_density(size=1, alpha=.3, color="#1c1b1b", fill="#006dfc")+
+    xlim(-4,4)+
+    ylim(0,0.6)+
+    #ggtitle("Normalised Response Density")+
+    labs(x ="Cscore")+
+    theme_ipsum()+
+    theme(plot.title = element_text(size=26),
+       axis.title.x = element_text(size=20, vjust=0.5, hjust=0.5),
+       axis.title.y = element_text(size=20, vjust=0.5, hjust=0.5),
+          plot.margin=grid::unit(c(1,1,1,1), "mm"))
+
+#ggsave(p, file="density-normalised.pdf", width=8, height=6, device = cairo_pdf)
+```
+
+```{r}
+set.seed(1)                                     # Splitting into training and test data
+train1=sample(1:nrow(x), nrow(x)/2)
+test1=(-train1)
+y1.test=y[test]
+```
+
+
+```{r}
+grid=10^seq(10, -2, length=100)
+lasso.mod=glmnet(x1[train1,], BNobject$x.t[train1], alpha=1, lambda=grid, family='gaussian')
+
+plot(lasso.mod, xvar="lambda", col = brewer.pal(n = 7, name = "Dark2"))
+legend("bottomright", lwd = 1, col = brewer.pal(n = 7, name = "Dark2"), legend = colnames(x[train,]))
+```
+
+```{r}
+set.seed(1)
+cv.out=cv.glmnet(x1[train1,], BNobject$x.t[train1], alpha=1, family='gaussian')
+plot(cv.out)
+bestlam =cv.out$lambda.min
+bestlam
+lasso.pred.transformed = predict(lasso.mod, s=bestlam, newx=x1[test1,])
+lasso.pred = predict(BNobject, newdata=lasso.pred.transformed, inverse=TRUE)
+mean((lasso.pred-y1.test)^2)
+```
+```{r}
+out=glmnet(x, BNobject$x.t, alpha=1, lambda=grid, family='gaussian')
+lasso.coef=predict(out, type="coefficients", s=bestlam) [1:8,]
+lasso.coef
+```
+  
+Fitting a model with appropriate non-linear effects.
+
+```{r}
+ggplot(prostate, aes(x=lpsa, y=Cscore)) + 
+    geom_point(
+        color="black",
+        fill="#69b3a2",
+        alpha=0.5,
+        size=1.5,
+        stroke = 1
+        ) +
+    geom_smooth(method="gam", color="#006dfc", se=TRUE, fullrange=TRUE, level=0.95)+
+    #ggtitle("lpsa smoothing spline")+
+    theme_ipsum()+
+    theme(plot.title = element_text(size=26),
+       axis.title.x = element_text(size=20, vjust=0.5, hjust=0.5),
+       axis.title.y = element_text(size=20, vjust=0.5, hjust=0.5),
+       plot.margin=grid::unit(c(1,1,1,1), "mm"))
+#ggsave(p, file="lpsa-spline.pdf", width=8, height=6, device = cairo_pdf)
+
+ggplot(prostate, aes(x=lcavol, y=Cscore)) + 
+    geom_point(
+        color="black",
+        fill="#69b3a2",
+        alpha=0.5,
+        size=1.5,
+        stroke = 1
+        ) +
+    geom_smooth(method="gam", color="#006dfc", se=TRUE, fullrange=TRUE, level=0.95)+
+    #ggtitle("lcavol smoothing spline")+
+    theme_ipsum()+
+    theme(plot.title = element_text(size=26),
+       axis.title.x = element_text(size=20, vjust=0.5, hjust=0.5),
+       axis.title.y = element_text(size=20, vjust=0.5, hjust=0.5),
+       plot.margin=grid::unit(c(1,1,1,1), "mm"))
+#ggsave(p, file="lcavol-spline.pdf", width=8, height=6, device = cairo_pdf)
+```
+
+```{r}
+set.seed(1)                                     # Splitting into training and test data
+smp_size = floor(0.8 * nrow(prostate))
+train_ind = sample(seq_len(nrow(prostate)), size = smp_size)
+
+gamtrain = prostate[train_ind, ]
+gamtest = prostate[-train_ind, ]
+```
+
+Fitting and testing GAMs using the smoothing splines.
+```{r}
+gam1 = gam(Cscore~s(lpsa, lpsa.df) + s(lcavol, lcavol.df) + svi + lweight + lcp, data=gamtrain)
+gam1.predict = predict(gam1, newdata=gamtest)
+gam1.MSE = mean((gam1.predict - gamtest$Cscore)^2)
+coef(gam1)
+
+gam2 = gam(Cscore~s(lpsa, lpsa.df) + s(lcavol, lcavol.df) + svi + age + lweight + lcp, data=gamtrain)
+gam2.predict = predict(gam2, newdata=gamtest)
+gam2.MSE = mean((gam2.predict - gamtest$Cscore)^2)
+
+gam3 = gam(Cscore~s(lpsa, lpsa.df) + s(lcavol, lcavol.df) + svi + lbph + lweight + lcp, data=gamtrain)
+gam3.predict = predict(gam3, newdata=gamtest)
+gam3.MSE = mean((gam3.predict - gamtest$Cscore)^2)
+
+gam4 = gam(Cscore~s(lpsa, lpsa.df) + s(lcavol, lcavol.df) + svi + age + lbph + lweight + lcp, data=gamtrain)
+gam4.predict = predict(gam4, newdata=gamtest)
+gam4.MSE = mean((gam4.predict - gamtest$Cscore)^2)
+
+gam1.MSE
+gam2.MSE
+gam3.MSE
+gam4.MSE
+```
+
+Anova for the different models.
+```{r}
+anova(gam1, gam2, gam3, gam4, test="F")
+```

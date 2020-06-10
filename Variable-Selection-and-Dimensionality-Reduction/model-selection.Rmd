@@ -1,0 +1,256 @@
+---
+title: "Model Selection"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+    number_sections: true
+---
+# Importing libraries
+```{r, results="hide"}
+install.packages('ISLR')
+install.packages('leaps')
+install.packages('glmnet')
+install.packages('pls')
+```
+
+# Subset Selection Methods
+## Best subset selection
+```{r, results="hide"}
+library(ISLR)
+library(leaps)
+attach(Hitters)
+
+Hitters = na.omit(Hitters)
+```
+
+The regsubsets() function (part of the leaps library) performs best subset selection by identifying the best model that contains a given number of predictors, where best is quantified using RSS. The syntax is the same as for lm().
+
+```{r}
+regfit.full = regsubsets(Salary~., Hitters)
+summary(regfit.full)
+```
+
+By default, regsubsets() only reports results up to the best eight-variable model. But the nvmax option can be used in order to return as many variables as are desired. Here we fit up to a 19-variable model.
+
+```{r}
+regfit.full = regsubsets(Salary~., data=Hitters, nvmax=19)
+reg.summary = summary(regfit.full)
+names(reg.summary)
+reg.summary$rsq
+```
+Plotting RSS, adjusted R2, Cp, and BIC for all of the models at once will help us decide which model to select. Note the type="l" option tells R to connect the plotted points with lines.
+
+```{r}
+par(mfrow=c(2,2))
+plot(reg.summary$rss, xlab="Number of Variables ", ylab="RSS", type="l")
+
+plot(reg.summary$adjr2, xlab="Number of Variables ", ylab="Adjusted RSq", type="l")
+max.adjr2 = which.max(reg.summary$adjr2)
+points(max.adjr2, reg.summary$adjr2[max.adjr2], col="red", cex=2, pch =20)
+
+plot(reg.summary$cp, xlab="Number of Variables ", ylab="Cp", type="l")
+min.cp = which.min(reg.summary$cp)
+points(min.cp ,reg.summary$cp[min.cp], col ="red", cex=2, pch =20)
+
+plot(reg.summary$bic, xlab="Number of Variables ", ylab="BIC", type="l")
+min.bic = which.min(reg.summary$bic)
+points(min.bic, reg.summary$bic[min.bic],col="red",cex=2,pch =20)
+```
+The regsubsets() function has a built-in plot() command which can be used to display the selected variables for the best model with a given number of predictors, ranked according to the BIC, Cp, adjusted R2, or AIC.
+
+```{r}
+plot(regfit.full, scale="r2")
+plot(regfit.full, scale="adjr2")
+plot(regfit.full, scale="Cp")
+plot(regfit.full, scale="bic")
+```
+
+The top row of each plot contains a black square for each variable selected according to the optimal model associated with that statistic. For instance, we see that several models share a BIC close to −150. However, the model with the lowest BIC is the six-variable model that contains only AtBat, Hits, Walks, CRBI, DivisionW, and PutOuts. We can use the coef() function to see the coefficient estimates associated with this model.
+
+```{r}
+coef(regfit.full, 6)
+```
+
+## Forward and Backward Stepwise Selection
+We can also use the regsubsets() function to perform forward stepwiseor backward stepwise selection, using the argument method="forward" or method="backward".
+
+```{r}
+regfit.fwd = regsubsets(Salary~., data=Hitters, nvmax=19, method="forward")
+summary(regfit.fwd)
+regfit.bwd = regsubsets(Salary~., data=Hitters, nvmax=19, method="backward")
+summary(regfit.bwd)
+```
+
+#Ridge Regression and The Lasso
+
+We will use the glmnet package in order to perform ridge regression and the lasso. The main function in this package is glmnet(), which can be used the ridge regression models, lasso models, and more.
+
+We will now perform ridge regression and the lasso in order to predict Salary on the Hitters data. Before proceeding ensure that the missing values have been removed from the data.
+
+```{r}
+x = model.matrix(Salary~., Hitters)[,-1]
+y = Hitters$Salary
+```
+
+The model.matrix() function is particularly useful for creating x; not only does it produce a matrix corresponding to the 19 predictors but it also automatically transforms any qualitative variables into dummy variables. The latter property is important because glmnet() can only take numerical, quantitative inputs.
+
+## Ridge Regression
+The glmnet() function has an alpha argument that determines what type of model is fit. If alpha=0 then a ridge regression model is fit, and if alpha=1 then a lasso model is fit. We first fit a ridge regression model.
+
+```{r}
+library(glmnet)
+grid=10^seq(10,-2, length =100)
+ridge.mod=glmnet (x,y,alpha=0, lambda=grid)
+```
+
+By default the glmnet() function performs ridge regression for an automatically selected range of λ values. However, here we have chosen to implement the function over a grid of values ranging from λ = 10^10 to λ = 10^−2, essentially covering the full range of scenarios from the null model containing only the intercept, to the least squares fit. As we will see, we can also compute model fits for a particular value of λ that is not one of the original grid values. Note that by default, the glmnet() function standardizes the variables so that they are on the same scale.
+
+Associated with each value of λ is a vector of ridge regression coefficients,
+stored in a matrix that can be accessed by coef().
+
+```{r}
+dim(coef(ridge.mod))
+```
+
+We expect the coefficient estimates to be much smaller, in terms of 2 norm, when a large value of λ is used, as compared to when a small value of λ is used. These are the coefficients when λ = 11,498, along with their 2 norm:
+
+```{r}
+ridge.mod$lambda[50]
+coef(ridge.mod)[,50]
+sqrt(sum(coef(ridge.mod)[-1,50]^2))
+```
+
+In contrast, here are the coefficients when λ = 705, along with their 2 norm. Note the much larger 2 norm of the coefficients associated with this smaller value of λ.
+
+```{r}
+ridge.mod$lambda[60]
+coef(ridge.mod)[,60]
+sqrt(sum(coef(ridge.mod)[-1,60]^2))
+```
+
+We can use the predict() function for a number of purposes. For instance, we can obtain the ridge regression coefficients for a new value of λ, say 50:
+
+```{r}
+predict(ridge.mod, s=50, type="coefficients")[1:20,]
+```
+
+We now split the samples into a training set and a test set in order to estimate the test error of ridge regression and the lasso. There are two common ways to randomly split a data set. The first is to produce a random vector of TRUE, FALSE elements and select the observations corresponding to TRUE for the training data. The second is to randomly choose a subset of numbers between 1 and n; these can then be used as the indices for the training observations. The two approaches work equally well.
+
+```{r}
+set.seed(1)
+train = sample(1:nrow(x), nrow(x)/2)
+test = (-train)
+y.test = y[test]
+```
+
+Next we fit a ridge regression model on the training set, and evaluate its MSE on the test set, using λ = 4. Note the use of the predict() function again. This time we get predictions for a test set, by replacing type="coefficients" with the newx argument.
+
+```{r}
+ridge.mod = glmnet(x[train,], y[train], alpha=0, lambda=grid, thresh=1e-12)
+ridge.pred = predict(ridge.mod, s=4, newx=x[test,])
+mean((ridge.pred-y.test)^2)
+```
+
+It is also possible to fit a least squares model with λ=0. In general, if we want to fit a (unpenalized) least squares model, then we should use the lm() function, since that function provides more useful outputs, such as standard errors and p-values for the coefficients.
+
+In general, instead of arbitrarily choosing λ, it would be better to use cross-validation to choose the tuning parameter λ. We can do this using the built-in cross-validation function, cv.glmnet(). By default, the function performs ten-fold cross-validation, though this can be changed using the argument nfolds. Note that we set a random seed first so our results will be reproducible, since the choice of the cross-validation folds is random.
+
+```{r}
+set.seed(1)
+cv.out = cv.glmnet(x[train,], y[train], alpha=0)
+plot(cv.out)
+bestlam = cv.out$lambda.min
+bestlam
+```
+
+What is the test MSE associated with this value of λ?
+
+```{r}
+ridge.pred = predict(ridge.mod, s=bestlam, newx=x[test,])
+mean((ridge.pred-y.test)^2)
+```
+
+Finally, we refit our ridge regression model on the full data set, using the value of λ chosen by cross-validation, and examine the coefficient estimates.
+
+```{r}
+out = glmnet(x, y, alpha=0)
+predict(out, type="coefficients", s= bestlam)[1:20,]
+```
+
+# PCR and PLS Regression
+## Principal Components Regression
+Principal components regression (PCR) can be performed using the pcr() function, which is part of the pls library.
+
+```{r}
+library(pls)
+set.seed(2)
+pcr.fit = pcr(Salary~., data=Hitters, scale=TRUE, validation="CV")
+```
+
+Setting scale=TRUE has the effect of standardizing each predictor prior to generating the principal components, so that the scale on which each variable is measured will not have an effect. Setting validation="CV" causes pcr() to compute the ten-fold cross-validation error for each possible value of M, the number of principal components used. The resulting fit can be examined using summary().
+
+```{r}
+summary(pcr.fit)
+```
+
+Note that pcr() reports the root mean squared error ; in order to obtain the usual MSE, we must square this quantity. For instance, a root mean squared error of 352.8 corresponds to an MSE of 352.82 = 124,468. The summary() function also provides the percentage of variance explained in the predictors and in the response using different numbers of components.
+
+One can also plot the cross-validation scores using the validationplot() function. Using val.type="MSEP" will cause the cross-validation MSE to be plotted.
+
+```{r}
+validationplot(pcr.fit, val.type="MSEP")
+```
+
+We now perform PCR on the training data and evaluate its test set performance.
+
+```{r}
+set.seed(1)
+pcr.fit = pcr(Salary~., data=Hitters, subset=train, scale=TRUE, validation="CV")
+validationplot(pcr.fit, val.type="MSEP")
+```
+
+Now we find that the lowest cross-validation error occurs when M = 5 components are used. We compute the test MSE as follows.
+
+```{r}
+pcr.pred = predict(pcr.fit, x[test,], ncomp=5)
+mean((pcr.pred-y.test)^2)
+```
+
+This test set MSE is competitive with the results obtained using ridge regression and the lasso. However, as a result of the way PCR is implemented, the final model is more difficult to interpret because it does not perform any kind of variable selection or even directly produce coefficient estimates.
+
+Finally, we fit PCR on the full data set, using M = 5, the number of components identified by cross-validation.
+
+```{r}
+pcr.fit = pcr(y~x, scale=TRUE, ncomp=5)
+summary(pcr.fit)
+```
+
+## Partial Least Squares
+We implement partial least squares (PLS) using the plsr() function, also in the pls library.
+
+```{r}
+set.seed(1)
+pls.fit = plsr(Salary~., data=Hitters, subset=train, scale=TRUE, validation="CV")
+summary(pls.fit)
+validationplot(pls.fit, val.type="MSEP")
+```
+
+The lowest cross-validation error occurs when only M = 1 partial least squares directions are used. We now evaluate the corresponding test set MSE.
+
+```{r}
+pls.pred=predict(pls.fit, x[test,], ncomp=1)
+mean((pls.pred-y.test)^2)
+```
+
+The test MSE is comparable to the test MSE obtained using ridge regression, the lasso, and PCR.
+
+Finally, we perform PLS using the full data set, using M = 1, the number of components identified by cross-validation.
+
+```{r}
+pls.fit = plsr(Salary~., data=Hitters, scale=TRUE, ncomp=1)
+summary (pls.fit)
+```
+
+Notice that the percentage of variance in Salary that the one-component PLS fit explains is almost as much as that explained using the final five-component model PCR fit. This is because PCR only attempts to maximize the amount of variance explained in the predictors, while PLS searches for directions that explain variance in both the predictors and the response.
