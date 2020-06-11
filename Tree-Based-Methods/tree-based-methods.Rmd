@@ -22,7 +22,120 @@ knitr::purl("tree-based-methods.Rmd")
 ```
 
 ## Installing Packages
+```{r results="hide"}
+install.packages('tree')
+library(tree)
+library(ISLR)
+install.packages('MASS')
+library(MASS)
+install.packages('randomForest')
+library(randomForest)
+```
+# Fitting Regression Trees
+Here we fit a regression tree to the Boston data set. First, we create a training set, and fit the tree to the training data.
 ```{r}
+set.seed(1)
+train = sample(1:nrow(Boston), nrow(Boston)/2)
+tree.boston = tree(medv~., Boston, subset=train)
+summary(tree.boston)
+```
+Notice that the output of summary() indicates that only three of the variables have been used in constructing the tree. In the context of a regression tree, the deviance is simply the sum of squared errors for the tree. We now plot the tree.
+```{r}
+plot(tree.boston)
+text(tree.boston, pretty=0)
+```
+Now we use the cv.tree() function to see whether pruning the tree will improve performance.
+```{r}
+cv.boston = cv.tree(tree.boston)
+plot(cv.boston$size, cv.boston$dev, type='b')
+```
+In this case, the most complex tree is selected by cross-validation. However, if we wish to prune the tree, we could do so as follows, using the prune.tree() function:
+```{r}
+prune.boston = prune.tree(tree.boston, best=5)
+plot(prune.boston)
+text(prune.boston, pretty =0)
+```
+In keeping with the cross-validation results, we use the unpruned tree to make predictions on the test set.
+```{r}
+yhat = predict(tree.boston, newdata=Boston[-train,])
+boston.test = Boston[-train,"medv"]
+plot(yhat, boston.test)
+abline(0,1)
+mean((yhat - boston.test)^2)
+```
 
+# Bagging and Random Forests
+Recall that bagging is simply a special case of a random forest with m = p. Therefore, the randomForest() function can be used to perform both random forests and bagging.
+```{r}
+set.seed(1)
+bag.boston = randomForest(medv~., data=Boston, subset=train, mtry=13, importance=TRUE)
+bag.boston
+```
+
+The argument mtry=13 indicates that all 13 predictors should be considered for each split of the tree—in other words, that bagging should be done. How well does this bagged model perform on the test set?
+```{r}
+yhat.bag = predict(bag.boston, newdata=Boston[-train,])
+plot(yhat.bag, boston.test)
+abline(0,1)
+mean((yhat.bag - boston.test)^2)
+```
+We could change the number of trees grown by randomForest() using the ntree argument:
+```{r}
+bag.boston = randomForest(medv~., data=Boston, subset=train, mtry=13, ntree=25)
+yhat.bag = predict(bag.boston, newdata=Boston[-train,])
+mean((yhat.bag - boston.test)^2)
+```
+
+Growing a random forest proceeds in exactly the same way, except that we use a smaller value of the mtry argument. By default, randomForest() uses p/3 variables when building a random forest of regression trees, and √p variables when building a random forest of classification trees. Here we use mtry = 6.
+```{r}
+set.seed(1)
+rf.boston = randomForest(medv~., data=Boston, subset=train, mtry=6, importance=TRUE)
+yhat.rf = predict(rf.boston, newdata=Boston[-train,])
+mean((yhat.rf - boston.test)^2)
+```
+
+Using the importance() function, we can view the importance of each variable.
+```{r}
+importance(rf.boston)
+```
+
+Two measures of variable importance are reported. The former is based upon the mean decrease of accuracy in predictions on the out of bag samples when a given variable is excluded from the model. The latter is a measure of the total decrease in node impurity that results from splits over that variable, averaged over all trees (this was plotted in Figure 8.9). In the case of regression trees, the node impurity is measured by the training RSS, and for classification trees by the deviance. Plots of these importance measures can be produced using the varImpPlot() function.
+```{r}
+varImpPlot(rf.boston)
+```
+
+The results indicate that across all of the trees considered in the random forest, the wealth level of the community (lstat) and the house size (rm) are by far the two most important variables.
+
+# Boosting
+Here we use the gbm package, and within it the gbm() function, to fit boosted regression trees to the Boston data set. We run gbm() with the option distribution="gaussian" since this is a regression problem; if it were a binary classification problem, we would use distribution="bernoulli". The argument n.trees=5000 indicates that we want 5000 trees, and the option interaction.depth=4 limits the depth of each tree.
+```{r}
+library(gbm)
+set.seed(1)
+boost.boston = gbm(medv~.,data=Boston[train,], distribution="gaussian", n.trees=5000, interaction.depth=4)
+```
+
+The summary() function produces a relative influence plot and also outputs the relative influence statistics.
+```{r}
+summary(boost.boston)
+```
+
+We see that lstat and rm are by far the most important variables. We can also produce partial dependence plots for these two variables. These plots illustrate the marginal effect of the selected variables on the response after integrating out the other variables. In this case, as we might expect, median house prices are increasing with rm and decreasing with lstat.
+```{r}
+par(mfrow=c(1,2))
+plot(boost.boston, i="rm")
+plot(boost.boston, i="lstat")
+```
+
+We now use the boosted model to predict medv on the test set:
+```{r}
+yhat.boost = predict(boost.boston, newdata=Boston[-train,], n.trees=5000)
+mean((yhat.boost - boston.test)^2)
+```
+
+If we want to, we can perform boosting with a different value of the shrinkage parameter λ. The default value is 0.001, but this is easily modified. Here we take λ = 0.2.
+```{r}
+boost.boston = gbm(medv~., data=Boston[train ,], distribution="gaussian", n.trees =5000, interaction.depth=4, shrinkage=0.2, verbose=F)
+yhat.boost = predict(boost.boston, newdata=Boston[-train,], n.trees=5000)
+mean((yhat.boost - boston.test)^2)
 ```
 
