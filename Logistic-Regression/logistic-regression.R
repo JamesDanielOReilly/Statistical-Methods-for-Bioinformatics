@@ -1,34 +1,13 @@
----
-title: "Logistic Regression"
-output:
-  pdf_document:
-    latex_engine: xelatex
-    number_sections: yes
-    toc: yes
-    toc_depth: 2
-  html_document:
-    df_print: paged
-    toc: yes
-    toc_depth: '2'
-editor_options:
-  chunk_output_type: inline
----
-
-# Getting Set Up
-
-## Setting chunk options
-```{r results="hide"}
+## ----results="hide"-----------------------------------------------------------
 knitr::opts_chunk$set(warning=FALSE, message=FALSE)
 knitr::purl("logistic-regression.Rmd")
-```
 
-## Installing Packages
-```{r}
+
+## -----------------------------------------------------------------------------
 install.packages("AICcmodavg")
-```
 
-## Reading the data
-```{r}
+
+## -----------------------------------------------------------------------------
 donner = read.table("donner-class.txt", row.names = 1, header=TRUE)
 attach(donner)
 head(donner,10)
@@ -37,30 +16,26 @@ head(donner,10)
 donner.na = na.omit(subset(donner,select=c('Age','Outcome','Sex')))
 donner.na$fem = as.numeric(donner.na$Sex=="Female")
 head(donner.na,10)
-```
 
-# Fitting a logistic regression
-```{r}
+
+## -----------------------------------------------------------------------------
 donner.log = glm(Outcome ~ Age+fem, data=donner.na, family=binomial(link="logit"))
 summary(donner.log)
-```
 
-## Odds ratios
-```{r}
+
+## -----------------------------------------------------------------------------
 exp(donner.log$coefficients)
 exp(confint(donner.log))
 exp(cbind(OR=donner.log$coefficients, confint(donner.log)))
-```
 
-## Odd ratio for Survival with 10 year increase
-```{r}
+
+## -----------------------------------------------------------------------------
 #exp(donner.log$coefficients*10)
 exp(c(OR=donner.log$coefficients[2]*10, confint(donner.log)[2,]*10))
 
-```
 
-## Plotting the logit curve
-```{r}
+
+## -----------------------------------------------------------------------------
 logit = function(x){
   log(x/(1-x))
 }
@@ -74,35 +49,31 @@ plot(donner.na$Age, jitter(donner.na$Outcome,.2), col=Sex, pch=20, cex=1.2, xlab
 curve(ilogit(cl[1]+cl[2]*x+cl[3]*0, 0, 1), add=T)
 curve(ilogit(cl[1]+cl[2]*x+cl[3]*1, 0, 1), add=T, col="red")
 legend("topright", pch=20, lty="solid", col=c("red","black"), c("women","men"))
-```
 
-## Predicted probabilities of survival
-```{r}
+
+## -----------------------------------------------------------------------------
 newdata2 = data.frame(fem=1, Age=mean(donner.na$Age))
 newdata2$greP = predict(donner.log, newdata=newdata2,type="response")
 newdata2
-```
 
-```{r}
+
+## -----------------------------------------------------------------------------
 newdata3 = data.frame(fem=0, Age=mean(donner.na$Age))
 newdata3$greP = predict(donner.log, newdata=newdata3,type="response")
 newdata3
-```
-```{r}
+
+## -----------------------------------------------------------------------------
 newdata4 = data.frame(fem=c(0,1), Age=mean(donner.na$Age))
 newdata4$greP = predict(donner.log, newdata=newdata4,type="response")
 newdata4
-```
 
-## Interaction model
-```{r}
+
+## -----------------------------------------------------------------------------
 m4 = glm(Outcome ~ Age*fem, data=donner.na, family=binomial(link="logit"))
 summary(m4)
-```
 
-# Model Selection
-## Fitting the models
-```{r}
+
+## -----------------------------------------------------------------------------
 donner.list=list()
 
 donner.list[[1]] = glm(Outcome ~ Age,data=donner.na, family=binomial(link="logit"))
@@ -111,29 +82,25 @@ donner.list[[3]] = glm(Outcome ~ Age+fem, data=donner.na, family=binomial(link="
 donner.list[[4]] = glm(Outcome ~ Age*fem, data=donner.na, family=binomial(link="logit"))
 
 donner.modnames = c("Age", "Sex", "Age+Sex", "Age+Sex+Age:Sex")
-```
 
-## Akaike Weights
-```{r}
+
+## -----------------------------------------------------------------------------
 library('AICcmodavg')
 donner.aictab=aictab(cand.set = donner.list, modnames = donner.modnames)
 donner.aictab
-```
 
-# Model Averaging
-```{r}
+
+## -----------------------------------------------------------------------------
 modavg(cand.set=donner.list, parm="Age", second.ord=TRUE, modnames=donner.modnames, uncond.se="revised", exclude=list("Age:fem"), conf.level=0.95, warn=TRUE)
 
 modavg(cand.set=donner.list, parm="fem", second.ord=TRUE, modnames=donner.modnames, uncond.se="revised", exclude=list("Age:fem"), conf.level=0.95, warn=TRUE)
-```
 
-# Odds Ratio with interaction model
-```{r}
+
+## -----------------------------------------------------------------------------
 x = seq(1, 70, 0.01)
 y = exp(coef(m4)[3]+coef(m4)[4]*x)
 
 plot(x, y, type="n", ylim=c(0.7,4.5), xlab="Age", ylab="Odds ratio", main="Odds ratio for gender")
 lines(x, y, lty=1, col="red")
 abline(h=1)
-```
 

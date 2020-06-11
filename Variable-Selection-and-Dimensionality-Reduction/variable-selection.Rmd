@@ -1,13 +1,27 @@
 ---
-title: "Model Selection"
+title: "Variable Selection and Dimensionality Reduction"
 output: 
   pdf_document:
     latex_engine: xelatex
-    toc: true
+    number_sections: yes
+    toc: yes
     toc_depth: 2
-    number_sections: true
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '2'
+editor_options:
+  chunk_output_type: inline
 ---
-# Importing libraries
+# Getting Set Up
+
+## Setting chunk options
+```{r results="hide"}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+knitr::purl("variable-selection.Rmd")
+```
+
+## Installing Packages
 ```{r, results="hide"}
 install.packages('ISLR')
 install.packages('leaps')

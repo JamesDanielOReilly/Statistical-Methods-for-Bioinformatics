@@ -1,14 +1,28 @@
 ---
 title: "Resampling Methods"
-output: 
+output:
   pdf_document:
     latex_engine: xelatex
-    toc: true
+    number_sections: yes
+    toc: yes
     toc_depth: 2
-    number_sections: true
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '2'
+editor_options:
+  chunk_output_type: inline
 ---
-# Installing packages
-```{r, results="hide"}
+# Getting Set Up
+
+## Setting chunk options
+```{r results="hide"}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+knitr::purl("resampling-methods.Rmd")
+```
+
+## Installing Packages
+```{r}
 install.packages('ISLR')
 install.packages('boot')
 ```

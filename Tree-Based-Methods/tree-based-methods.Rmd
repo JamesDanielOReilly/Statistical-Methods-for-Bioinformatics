@@ -1,6 +1,28 @@
 ---
 title: "Bagging and Boosting"
-output: html_notebook
-editor_options: 
+output: 
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '2'
+editor_options:
   chunk_output_type: inline
 ---
+# Getting Set Up
+
+## Setting chunk options
+```{r results="hide"}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+knitr::purl("tree-based-methods.Rmd")
+```
+
+## Installing Packages
+```{r}
+
+```
+

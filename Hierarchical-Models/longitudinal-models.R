@@ -1,77 +1,48 @@
----
-title: "Models for Longitudinal Data"
-output:
-  pdf_document:
-    latex_engine: xelatex
-    number_sections: yes
-    toc: yes
-    toc_depth: 2
-  html_document:
-    df_print: paged
-    toc: yes
-    toc_depth: '2'
-editor_options:
-  chunk_output_type: inline
----
-
-# Getting Set Up
-
-## Setting chunk options and generating R script
-```{r results="hide"}
+## ----results="hide"-----------------------------------------------------------
 knitr::opts_chunk$set(warning=FALSE, message=FALSE)
 knitr::purl("longitudinal-models.Rmd")
-```
 
-## Installing Packages
-```{r}
+
+## -----------------------------------------------------------------------------
 install.packages('lattice')
 library('lattice')
-```
 
-## Reading in the data
-```{r}
+
+## -----------------------------------------------------------------------------
 early.int1 = read.table("earlyint.txt", header=T, sep=",")
 attach(early.int1)
-```
 
-## Exploring the data
 
-Spaghetti plot.
-```{r}
+## -----------------------------------------------------------------------------
 n = length(unique(id))
 interaction.plot(age, id, cog, xlab="Age in years", ylab="IQ", legend=F)
-```
-Descriptives.
-```{r}
+
+
+## -----------------------------------------------------------------------------
 early.mean=tapply(cog,list(age,program),mean) #mean
 early.sd=tapply(cog,list(age,program),sd) #sd
 early.var=tapply(cog,list(age,program),var) #variance
 early.n=table(age,program) #frequency
-```
 
-Boxplots.
-```{r}
+
+## -----------------------------------------------------------------------------
 boxplot(cog~age, xlab="Age (in years)", ylab="IQ")
-```
 
-Boxplots per program.
-```{r}
+
+## -----------------------------------------------------------------------------
 par(mfrow=c(2,1))
 boxplot(cog[program==0]~age[program==0], main="No intervention", main="No intervention", xlab="Age (in years)", ylab="IQ")
 boxplot(cog[program==1]~age[program==1], main="Intervention", main="No intervention", xlab="Age (in years)", ylab="IQ")
-```
 
-General function to plot error bars.
-```{r}
+
+## -----------------------------------------------------------------------------
 errbar=function(x,y,height,width,lty=1,col="black"){
 arrows(x,y,x,y+height,angle=90,length=width,lty=lty, col=col)
 arrows(x,y,x,y-height,angle=90,length=width,lty=lty, col=col)
 }
-```
 
 
-Plotting mean evolutions.
-```{r}
+## -----------------------------------------------------------------------------
 plot(age[id==1],early.mean[,1],type="b",xlim=c(1,2), ylim=c(40,160),xlab="Age (in years)",ylab="IQ",axes=F, main="Mean evolution (with 1 SE intervals)")
 axis(side=1,at=c(1,1.5,2),labels=c(1,1.5,2))
 axis(side=2,at=seq(40,160,20))
@@ -80,59 +51,47 @@ box()
 points(age[id==1],early.mean[,2],type="b",col="red")
 errbar(age[id==1]-.005,early.mean[,1],early.sd[,1],.1)
 errbar(age[id==1]+.005,early.mean[,2],early.sd[,2],.1,col="red")
-```
 
-Correlation between IQ scores at different ages.
-```{r}
+
+## -----------------------------------------------------------------------------
 early.int2 <- reshape(early.int1, timevar = "age", idvar = c("id", "program"), direction = "wide") # reshaping data into wide form
 early.int2
 
  cor(early.int2[,3:5])
-```
 
-# Linear Regression Per Person
-Creating the time variable.
-```{r}
+
+## -----------------------------------------------------------------------------
 early.int1$age0<-early.int1$age-1
-```
 
-Displaying the linear regression per person.
-```{r}
+
+## -----------------------------------------------------------------------------
 cf = sapply(early.int1$id, function(x) coef(lm(cog~age0, data=subset(early.int1, id==x))))
 Sx<-reorder(early.int1$id, cf[1,])
 
 xyplot(cog ~ age0|Sx, groups=program, data=early.int1, type=c('p','r'), auto.key=T,aspect="xy", par.settings=list(axis.text=list(cex=0.6), fontsize=list(text=8, points=10)), scales=list(x=list(at=c(0,0.5,1),labels=c("0","0.5","1")))
 )
-```
 
-## Linear regression of cog on age per participant.
 
-Coefficients.
-```{r}
+## -----------------------------------------------------------------------------
 lin.reg.coef = by(early.int1, early.int1$id, function(data) coef(lm(cog ~ age0, data=data)))
 lin.reg.coef1 = unlist(lin.reg.coef)
 names(lin.reg.coef1) = NULL
 lin.reg.coef2 = matrix(lin.reg.coef1,length(lin.reg.coef1)/2,2,byrow = TRUE)
-```
 
-R-Squared.
-```{r}
+
+## -----------------------------------------------------------------------------
 lin.reg.r.squared = by(early.int1, early.int1$id, function(data) summary(lm(cog ~ age, data=data))$r.squared)
 lin.reg.r.squared1 = as.vector(unlist(lin.reg.r.squared))
-```
 
-Histograms.
-```{r}
+
+## -----------------------------------------------------------------------------
 par(mfrow=c(3,1))
 hist(lin.reg.coef2[,1],xlab="Intercept",col="lightblue",main="Histogram of individual intercepts")
 hist(lin.reg.coef2[,2],xlab="Slope",col="lightblue",main="Histogram of individual slopes")
 hist(lin.reg.r.squared1,xlab="R squared",col="lightblue",main="Histogram of individual R squared")
-```
 
-# Linear regression per person and group
 
-Plotting individual regression lines per group.
-```{r}
+## -----------------------------------------------------------------------------
 reg.coef = cbind(lin.reg.coef2, early.int1[early.int1$age==1,]$program)
 mean.int = tapply(reg.coef[,1], reg.coef[,3], mean)
 mean.slope = tapply(reg.coef[,2], reg.coef[,3], mean)
@@ -161,12 +120,9 @@ for (i in 1:103){
     curve(cbind(1,x)%*%c(mean.int[2], mean.slope[2]), add=T, lwd=2)
   }
 }
-```
 
-# Fitting the Model
 
-## Installing the Packages
-```{r}
+## -----------------------------------------------------------------------------
 install.packages("lme4")
 install.packages("arm")
 install.packages("pbkrtest")
@@ -176,62 +132,52 @@ library(lattice)
 library(arm)
 library(car)
 library(pbkrtest)
-```
 
-Creating the time variable.
-```{r}
+
+## -----------------------------------------------------------------------------
 early.int1$age0<-early.int1$age-1
-```
 
-Fitting the model with maximum likelihood.
-```{r}
+
+## -----------------------------------------------------------------------------
 early.lmer1 = lmer(cog~1+age0*program+(1 + age0|id), REML = FALSE, data=early.int1)
 summary(early.lmer1)
-```
 
-## Estimating the fixed effects via bootstrap
-```{r}
+
+## -----------------------------------------------------------------------------
 fixed.boot = bootMer(early.lmer1, fixef, use.u = TRUE, nsim = 250)
 fixed.boot
 summary(fixed.boot)
-```
 
-## Calculating confidence intervals for the fixed effects via Wald, bootstrap and profile likelihood
-```{r}
+
+## -----------------------------------------------------------------------------
 confint(early.lmer1,par=5:8,method="Wald",oldNames = FALSE) # Only for fixed effects vc will return NA
 confint(early.lmer1,method="boot",boot.type ="perc",oldNames = FALSE,nsim=500)
 confint(early.lmer1, level = 0.95,method="profile",oldNames = FALSE)
-```
 
-## Get the KR-approximated degrees of freedom
-```{r}
+
+## -----------------------------------------------------------------------------
 #early.lmer1.df.KR = get_ddf_Lb(early.lmer1, fixef(early.lmer1))
-```
 
-## Likelihood ratio tests
 
-```{r}
+## -----------------------------------------------------------------------------
 early.lmer1.noprog<-lmer(cog~1+age0+(1 + age0|id), REML = FALSE, data=early.int1)
 early.lmer1.intprog<-lmer(cog~1+age0+program+(1 + age0|id), REML = FALSE, data=early.int1)
 anova(early.lmer1.noprog,early.lmer1.intprog,early.lmer1)
-```
 
-## Random effects covariance matrix
-```{r}
+
+## -----------------------------------------------------------------------------
 D.early = unclass(VarCorr(early.lmer1))$id
 D.early
-```
 
-## Predicted random effects
-```{r}
+
+## -----------------------------------------------------------------------------
 early.lmer1.re = ranef(early.lmer1)$id
 head(early.lmer1.re,10)
 
 plot(early.lmer1.re, main="Random intercept (b0i) versus random slope (b1i)")
-```
-# OLS vs LM Estimates
-## Creating the subject specific intercepts and slopes
-```{r}
+
+
+## -----------------------------------------------------------------------------
 ind.coef=coef(early.lmer1)$id
 head(ind.coef)
 
@@ -239,5 +185,4 @@ head(ind.coef)
 int.subject=ind.coef[,1]+ind.coef[,3]
 slope.subject=ind.coef[,2]+ind.coef[,4]
 plot(int.subject,slope.subject, main="Random intercept versus random slope (Including the fixed effects)")
-```
 

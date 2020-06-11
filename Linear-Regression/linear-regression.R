@@ -1,129 +1,93 @@
----
-title: "Linear Regression"
-output:
-  pdf_document:
-    latex_engine: xelatex
-    number_sections: yes
-    toc: yes
-    toc_depth: 2
-  html_document:
-    df_print: paged
-    toc: yes
-    toc_depth: '2'
-editor_options:
-  chunk_output_type: inline
----
-
-# Getting Set Up
-
-## Setting chunk options and generating R script
-```{r results="hide"}
+## ----results="hide"-----------------------------------------------------------
 knitr::opts_chunk$set(warning=FALSE, message=FALSE)
 knitr::purl("linear-regression.Rmd")
-```
 
-## Importing Libraries
-```{r}
+
+## -----------------------------------------------------------------------------
 install.packages('pastecs')
-```
 
-# Basics
-Reading the data in R.
-```{r}
+
+## -----------------------------------------------------------------------------
 library(pastecs)
 kalama = read.table("kalama.txt", header=T)
 attach(kalama)
 kalama
-```
 
-Descriptive statistics in R.
-```{r}
+
+## -----------------------------------------------------------------------------
 options(digits=2)
 descrip.kalama = stat.desc(kalama[,c("age","height")],basic=TRUE, desc=TRUE)
 descrip.kalama
-```
 
-Estimating Correlations in R.
-```{r}
+
+## -----------------------------------------------------------------------------
 cov.age.height = cov(age, height)
 corr.age.height = cor(age, height)
 cov.age.height
 corr.age.height
-```
 
-Testing if the population correlation is zero.
-```{r}
+
+## -----------------------------------------------------------------------------
 corr.age.height.test = cor.test(age, height, alternative="two.sided", method="pearson")
 corr.age.height.test
-```
 
-Scatterplot with line.
-```{r}
+
+## -----------------------------------------------------------------------------
 plot(age, height, main="Age vs Height", xlab="Age", ylab="Height", pch=19)
 abline(lm(height~age), col="red")
-```
 
-# Simple Linear Regression
-```{r}
+
+## -----------------------------------------------------------------------------
 res = lm(height~age, data=kalama)
 kalama.anova = anova(res)
 kalama.summary = summary(res)
 kalama.anova
 kalama.summary
-```
 
-# Multiple Linear Regression
 
-## Reading in the data
-```{r}
+## -----------------------------------------------------------------------------
 satisfaction = read.table("satisfaction.txt", header=T)
 attach(satisfaction)
 satisfaction
-```
-## Exploring the data
-```{r}
+
+
+## -----------------------------------------------------------------------------
 cor(satisfaction)
 plot(satisfaction)
-```
 
-Descriptive statistics
-```{r}
+
+## -----------------------------------------------------------------------------
 options(digits=2)
 descrip.satisfaction = stat.desc(satisfaction,basic=TRUE, desc=TRUE)
 descrip.satisfaction
-```
 
-## Fitting the model
-```{r}
+
+## -----------------------------------------------------------------------------
 satisfaction.lm = lm(satis~age+severity+anxiety, data=satisfaction)
 satisfaction.summary = summary(satisfaction.lm)
 satisfaction.summary
-```
 
-## Likelihood ratio test null model versus full model
-```{r}
+
+## -----------------------------------------------------------------------------
 satisfaction.lm.int = lm(satis~1, data=satisfaction) # Null model
 anova(satisfaction.lm.int,satisfaction.lm) # Null versus full
-```
 
-## Sequential building of the model
-```{r}
+
+## -----------------------------------------------------------------------------
 satisfaction.anova = anova(satisfaction.lm)
 satisfaction.anova
-```
 
-## Final Model
-```{r}
+
+## -----------------------------------------------------------------------------
 satisfaction.lm.final = lm(satis~age+anxiety, data=satisfaction)
 satisfaction.final.summary = summary(satisfaction.lm.final)
 satisfaction.final.summary
-```
 
-## Predicting a new observation
-```{r}
+
+## -----------------------------------------------------------------------------
 newdata = data.frame(age=43, anxiety=2.7)
 pred.w.plim = predict(satisfaction.lm.final, newdata, interval="predict")
 pred.w.clim = predict(satisfaction.lm.final, newdata, interval = "confidence")
 pred.w.plim
 pred.w.clim
-```
+

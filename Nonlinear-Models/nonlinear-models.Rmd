@@ -1,9 +1,28 @@
 ---
 title: "Nonlinear Models"
-output: html_document
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '2'
+editor_options:
+  chunk_output_type: inline
 ---
 
 # Getting Set Up
+
+## Setting chunk options
+```{r results="hide"}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+knitr::purl("nonlinear-models.Rmd")
+```
+
+## Installing Packages
 We begin by loading the ISLR library, which contains the data.
 ```{r}
 install.packages('ISLR')
