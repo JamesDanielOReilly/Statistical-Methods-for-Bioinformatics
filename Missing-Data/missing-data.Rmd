@@ -1,0 +1,166 @@
+---
+title: "Missing Data"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '2'
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+editor_options:
+  chunk_output_type: inline
+---
+
+# Getting Set Up
+
+## Setting chunk options and generating R script
+```{r results="hide"}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+knitr::purl("missing-data.Rmd")
+```
+
+## Installing Packages
+```{r}
+install.packages('mice')
+install.packages('lattice')
+install.packages('VIM')
+install.packages('aod')
+install.packages('BaM')
+
+library(mice)
+library(lattice)
+library(VIM)
+library(aod)
+library(BaM)
+```
+
+## Loading in data
+```{r}
+titanic = read.table("titanic.txt", header=T, sep=",")
+titanic.missing = titanic[,c(1,2,3,5,11)]
+head(titanic.missing, 10)
+```
+
+# Exploratory Analysis
+## Exploring the missingness using VIM
+```{r}
+titanic.missing.aggr = aggr(titanic.missing, numbers=TRUE, prop=FALSE, ylab=c("Histogram of missing data","Pattern"))
+titanic.missing.aggr
+
+aggr(titanic.missing, combined=TRUE, numbers=TRUE, prop=TRUE, cex.numbers=0.87, varheight=FALSE)
+```
+Amount of missingness in age for each survived group.
+```{r}
+barMiss(titanic.missing[,c("survived","age")])
+```
+
+Amount of missigness in age for each sex group
+```{r}
+barMiss(titanic.missing[,c("sex","age")])
+histMiss(titanic.missing)
+```
+
+# Complete Cases
+## Fitting a logistic regression model for the complete cases
+```{r}
+titanic.logistic.omit = glm(survived ~ pclass+sex+age, family=binomial, data=titanic.missing)
+summary(titanic.logistic.omit)
+```
+
+## Global effect of class
+```{r}
+wald.test(b=coef(titanic.logistic.omit), Sigma=vcov(titanic.logistic.omit), Terms=2:3)
+```
+
+## Odds ratios
+```{r}
+exp(cbind(OR=titanic.logistic.omit$coefficients, confint(titanic.logistic.omit)))
+```
+ 
+# Multiple Imputation
+## Studying the patterns of missingness
+```{r}
+pattern = md.pattern(titanic.missing)
+pattern
+
+pairs = md.pairs(titanic.missing)
+pairs
+```
+
+## Imputing the missing values
+```{r results="hide"}
+imp = mice(titanic.missing, m=100)
+imp
+```
+
+## Imputed values for age.
+Each row corresponds to a missing entry in age. The columns contain the multiple imputations.
+```{r}
+imp$imp$age[1:10,1:5]
+```
+## Combine observed and imputed data.
+Only first ten passengers shown.
+```{r}
+complete(imp,1)[1:10,]
+```
+
+
+
+## Diagnostic Checking
+It is often useful to inspect the distributions of original and the imputed data. The complete() function extracts the original and the imputed data sets from the imp object as a long (row-stacked) matrix. The col vector separates the observed (blue) and imputed (red) data for age.
+```{r}
+com = complete(imp, "long", inc=T)
+col = rep(c("blue","red")[1+as.numeric(is.na(imp$data$age))],101)
+stripplot(age~.imp, data=com, jit=TRUE, fac=0.8, col=col, pch=20, cex=1.4, xlab="Imputation number")
+```
+
+# Analyses of Imputed Data
+```{r}
+# Analyzing the imputed data sets
+fit = with(data=imp, exp=glm(survived ~ pclass + sex + age, family=binomial))
+
+# Creating a data set with the results of all the analysis
+MI.matrix<-matrix(0,100,5)
+for(k in 1:100) {
+  MI.matrix[k,] = coefficients(fit$analyses[[k]])
+  MI.results = data.frame(Intercept=MI.matrix[,1], pclass2=MI.matrix[,2], pclass3=MI.matrix[,3], sex=MI.matrix[,4], age=MI.matrix[,5])
+}
+
+MI.results[1:10,]
+```
+
+## Combining the results using Rubin’s rule
+The column fmi contains the fraction of missing information, i.e. the proportion of the variability that is attributable to the uncertainty caused by the missing data.
+```{r}
+est = pool(fit)
+summary(est)
+```
+
+# Inverse Probability Weighting
+## Creating the missing data indicator variable r
+```{r}
+titanic.missing$r = as.numeric(!is.na(titanic.missing$age))*as.numeric(!is.na(titanic.missing$sex))
+head(titanic.missing,15)
+```
+
+## Fitting the logistic regression model to calculate the probabilities of being complete
+```{r}
+titanic.ipw.glm<-glm(r ~ pclass + survived, data=titanic.missing,family=binomial)
+summary(titanic.ipw.glm)
+```
+
+## Calculating the weights: Inverse Probabilities
+```{r}
+titanic.missing$w<-1/fitted(titanic.ipw.glm)
+head(titanic.missing, 15)
+```
+
+## Generating Model
+```{r}
+titanic.results.ipw = glm(survived ~ pclass + sex + age, data=titanic.missing, weights=titanic.missing$w, family=binomial)
+summary(titanic.results.ipw)
+```
+
