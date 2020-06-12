@@ -1,0 +1,159 @@
+---
+title: "Cluster Models"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '2'
+editor_options:
+  chunk_output_type: inline
+---
+
+# Getting Set Up
+
+## Setting chunk options and generating R script
+```{r results="hide"}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+knitr::purl("longitudinal-models.Rmd")
+```
+
+## Installing Packages
+```{r}
+install.packages("Hmisc")
+install.packages("lattice")
+install.packages('grid')
+install.packages('nlme')
+```
+
+## Reading the Data
+```{r}
+ratpup = read.table("rat_pup.dat", h = T)
+ratpup$sex1[ratpup$sex == "Female"] = 1
+ratpup$sex1[ratpup$sex == "Male"] = 0
+attach(ratpup)
+```
+
+# Exploring the Data
+## Table describing the data
+```{r}
+library(Hmisc)
+g = function(x){
+  c(N=length(x), Mean=mean(x,na.rm=TRUE), SD=sd(x,na.rm=TRUE), Min=min(x,na.rm=TRUE), Max=max(x,na.rm=TRUE))
+}
+summarize(weight,by=llist(treatment,sex),g)
+```
+
+Comparing the distributions of birth weights for each treatment by sex combination.
+```{r}
+library(lattice) # trellis graphics
+library(grid)
+
+bwplot(weight ~ sex|treatment, data=ratpup,aspect = 2, ylab="Birth Weights", xlab="SEX", main = "Boxplots of birth weights for levels of treatment by sex")
+```
+
+Comparing the distributions of birth weights for each treatment
+```{r}
+dotplot(litterid ~ weight,group=treatment, data=ratpup, xlab="Weight", ylab="Litter", auto.key=list(space="top", column=3, cex=.8, title="", cex.title=1, lines=FALSE, points=TRUE))
+with(ratpup, interaction.plot(treatment,sex,weight))
+```
+
+# Statistical Analyses
+## Fitting a homoscedastic model
+At this moment the lmer() function does not allow users to fit models with heterogeneous error variance structures. Therefore, we will work with the function lme() from the package nlme. lme() and lmer() are similar but there are some differences in syntax and output that will be explained in what follows.
+```{r}
+library(nlme)
+
+meanfull.hom <- lme(weight ~ treatment + sex1 + litsize + treatment:sex1, random=~1 | litterid, ratpup, method="REML")
+```
+
+The factor() function is not necessary for treatment, because the original treatment variable has string values High, Low, and Control,
+and will therefore be considered as a factor automatically. We also do not need to declare sex1 as a factor, because it is an
+indicator variable having only values of 0 and 1.
+
+lme() treats the lowest level (alphabetically or numerically) of a factor as the reference category. This means that “Control” will be the reference category of treatment. The reference level can be changed using "treatment=relevel(treatment,ref="High")".
+
+random = 1 | litterid, includes a random effect (intercept) for each level of litter in the model. method = "REML", specifies that the default REML estimation method is to be used.
+
+```{r}
+summary(meanfull.hom)
+```
+
+```{r}
+anova(meanfull.hom)
+```
+
+The anova() function performs a series of Type I (or sequential) F-tests for the fixed effects in the model, each of which are conditional on the preceding terms in the model specification. For example, the F-test for sex1 is conditional on the treatment effects, but the F-test for treatment is not conditional on the sex1 effect.
+
+The model was fitted using REML and, therefore, different mean structures cannot be compared.
+
+## Display the random effects (EBLUPs) from the model.
+```{r}
+random.effects(meanfull.hom)
+```
+
+## Fitting a heteroscedastic model
+```{r}
+meanfull.het <- lme(weight ~ treatment + sex1 + litsize + treatment:sex1, random=~1 | litterid, ratpup, method = "REML", weights = varIdent(form = ~1 | treatment))
+```
+
+The arguments of the lme() function are the same as those used to fit
+Model 1, with the addition of the weights argument. The argument "weights = varIdent(form = ~ 1 |treatment)" sets up a heterogeneous residual variance structure, with observations at different levels of treatment having different residual variance parameters.
+
+```{r}
+summary(meanfull.het)
+```
+
+Random effects portion of the output: Estimated residual standard deviation equal to 0.5147948.
+Parameter estimates: Values by which the residual standard deviation should be multiplied to obtain the estimated standard deviation of the residuals in each treatment group.This multiplier is 1.0 for the control group (the reference). Multipliers for the low and high treatment groups are very similar.
+
+## Heterocedastic versus homocedastic model
+```{r}
+anova(meanfull.hom, meanfull.het)
+```
+
+## High-low dose: Equal residual variance
+```{r}
+ratpup$trtgrp[treatment=="Control"] <- 1
+ratpup$trtgrp[treatment == "Low" | treatment == "High"] <- 2
+
+meanfull.hilo <- lme(weight ~ treatment + sex1 + litsize + treatment:sex1, random=~1 | litterid, ratpup, method = "REML", weights=varIdent(form=~1 | trtgrp))
+
+summary(meanfull.hilo)
+anova(meanfull.hilo)
+```
+
+```{r}
+anova(meanfull.het, meanfull.hilo)
+```
+
+Can the random effects (b0i) associated with the litter–specific intercepts be omitted from Model 3? One does not directly test the significance of the random litter–specific intercepts, but rather tests a hypothesis related to the variance of the random litter effects. Although hypothesis tests are often phrased in terms of parameter restrictions, they basically compare the quality of the fit obtained from two nested models Likelihood ratio tests (LRTs) are a valuable tool to compare nested models.
+```{r}
+meanfull.hilo.nolitter <- gls(weight ~ treatment + sex1 + litsize + treatment:sex1, data = ratpup, weights = varIdent(form = ~1 | trtgrp))
+
+summary(meanfull.hilo.nolitter)
+```
+
+```{r}
+anova(meanfull.hilo.nolitter,meanfull.hilo)
+```
+
+## Fitting the final model using ML
+```{r}
+meanfull.hilo.ml <- lme(weight ~ treatment + sex1 + litsize + treatment:sex1, random = ~1 | litterid, ratpup, method = "ML", weights = varIdent(form = ~1 | trtgrp))
+
+summary(meanfull.hilo.ml)
+```
+
+```{r}
+summary(meanfull.hilo.ml)
+```
+
+```{r}
+anova(meanfull.hilo.ml)
+```
+
